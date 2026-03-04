@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real-Time Analytics Dashboard | Amaro Barros</title>
-  <meta name="description" content="Real-time analytics dashboard demo built with vanilla HTML Canvas — no dependencies. A portfolio project by Amaro Barros.">
+  <title>Real-Time Analytics Dashboard</title>
+  <meta name="description" content="Real-time analytics dashboard built with vanilla HTML Canvas — zero dependencies. Features animated charts, auto-updating KPIs, and smooth data transitions.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -839,6 +839,53 @@
   </div>
 
   <script>
+    /* ═══════════════════════════════════════════════════════════════
+       CONFIGURATION — Edit this section to customize the dashboard
+       ═══════════════════════════════════════════════════════════════ */
+    const DASHBOARD_CONFIG = {
+      // Dashboard title
+      title: 'Real-Time Analytics Dashboard',
+
+      // KPI cards — each with label, dataKey, initial value, sparkline range, prefix, suffix, icon, accent
+      kpis: [
+        { label: 'Active Users',    dataKey: 'users',      initial: 2847,  min: 2200,  max: 3200,  prefix: '',  suffix: '',  icon: 'users',      accentColor: 'cyan' },
+        { label: 'Page Views',      dataKey: 'views',      initial: 48293, min: 38000, max: 55000, prefix: '',  suffix: '',  icon: 'views',      accentColor: 'emerald' },
+        { label: 'Conversion Rate', dataKey: 'conversion', initial: 3.74,  min: 2.80,  max: 4.20,  prefix: '',  suffix: '%', icon: 'conversion', accentColor: 'amber',  decimals: 2, sparkDivisor: 100 },
+        { label: 'Revenue',         dataKey: 'revenue',    initial: 12847, min: 9000,  max: 16000, prefix: '$', suffix: '',  icon: 'revenue',    accentColor: 'violet' }
+      ],
+
+      // Traffic sources for donut chart
+      sources: [
+        { name: 'Direct',   value: 4250, colorKey: 'cyan' },
+        { name: 'Organic',  value: 3180, colorKey: 'emerald' },
+        { name: 'Social',   value: 2140, colorKey: 'amber' },
+        { name: 'Referral', value: 1430, colorKey: 'violet' }
+      ],
+
+      // Bar chart — top pages
+      barPages: [
+        { label: '/home',     value: 4820, color: 'cyan' },
+        { label: '/products', value: 3294, color: 'emerald' },
+        { label: '/pricing',  value: 2180, color: 'amber' },
+        { label: '/blog',     value: 1756, color: 'violet' },
+        { label: '/contact',  value: 987,  color: 'rose' },
+        { label: '/about',    value: 743,  color: 'cyan' }
+      ],
+
+      // Chart data points count
+      dataPoints: 24,
+
+      // Sparkline data points
+      sparklinePoints: 20,
+
+      // Refresh interval in milliseconds
+      refreshInterval: 3000,
+
+      // Line chart data ranges
+      lineVisitorsRange: [800, 3500],
+      lineSessionsRange: [400, 2000]
+    };
+
     /* ═══════════════════════════════════════════════
        THEME INIT (runs immediately to prevent flash)
     ═══════════════════════════════════════════════ */
@@ -937,27 +984,27 @@
     // Keep a mutable reference that we refresh on theme change
     let COLORS = COLORS_FN();
 
-    // KPI state
-    const kpiState = {
-      users: { value: 2847, target: 2847, display: 0 },
-      views: { value: 48293, target: 48293, display: 0 },
-      conversion: { value: 3.74, target: 3.74, display: 0 },
-      revenue: { value: 12847, target: 12847, display: 0 }
-    };
+    // KPI state (built from DASHBOARD_CONFIG)
+    const kpiState = {};
+    DASHBOARD_CONFIG.kpis.forEach(k => {
+      kpiState[k.dataKey] = { value: k.initial, target: k.initial, display: 0 };
+    });
 
-    // Sparkline data
-    const sparkData = {
-      users: Array.from({length: 20}, () => rand(2200, 3200)),
-      views: Array.from({length: 20}, () => rand(38000, 55000)),
-      conversion: Array.from({length: 20}, () => rand(280, 420) / 100),
-      revenue: Array.from({length: 20}, () => rand(9000, 16000))
-    };
+    // Sparkline data (built from DASHBOARD_CONFIG)
+    const sparkData = {};
+    DASHBOARD_CONFIG.kpis.forEach(k => {
+      if (k.sparkDivisor) {
+        sparkData[k.dataKey] = Array.from({length: DASHBOARD_CONFIG.sparklinePoints}, () => rand(Math.round(k.min * k.sparkDivisor), Math.round(k.max * k.sparkDivisor)) / k.sparkDivisor);
+      } else {
+        sparkData[k.dataKey] = Array.from({length: DASHBOARD_CONFIG.sparklinePoints}, () => rand(k.min, k.max));
+      }
+    });
 
-    // Line chart data
-    const LINE_POINTS = 24;
+    // Line chart data (built from DASHBOARD_CONFIG)
+    const LINE_POINTS = DASHBOARD_CONFIG.dataPoints;
     const lineData = {
-      visitors: Array.from({length: LINE_POINTS}, () => rand(800, 3500)),
-      sessions: Array.from({length: LINE_POINTS}, () => rand(400, 2000)),
+      visitors: Array.from({length: LINE_POINTS}, () => rand(...DASHBOARD_CONFIG.lineVisitorsRange)),
+      sessions: Array.from({length: LINE_POINTS}, () => rand(...DASHBOARD_CONFIG.lineSessionsRange)),
       prevVisitors: [],
       prevSessions: [],
       animT: 1
@@ -965,25 +1012,13 @@
     lineData.prevVisitors = [...lineData.visitors];
     lineData.prevSessions = [...lineData.sessions];
 
-    // Bar chart data
-    const barPages = [
-      { label: '/home', value: 4820, color: 'cyan' },
-      { label: '/products', value: 3294, color: 'emerald' },
-      { label: '/pricing', value: 2180, color: 'amber' },
-      { label: '/blog', value: 1756, color: 'violet' },
-      { label: '/contact', value: 987, color: 'rose' },
-      { label: '/about', value: 743, color: 'cyan' }
-    ];
+    // Bar chart data (built from DASHBOARD_CONFIG)
+    const barPages = DASHBOARD_CONFIG.barPages.map(p => ({ ...p }));
     const barTargets = barPages.map(p => p.value);
     const barDisplayed = barPages.map(() => 0);
 
-    // Donut chart data
-    const donutSources = [
-      { label: 'Direct', value: 4250, colorKey: 'cyan' },
-      { label: 'Organic', value: 3180, colorKey: 'emerald' },
-      { label: 'Social', value: 2140, colorKey: 'amber' },
-      { label: 'Referral', value: 1430, colorKey: 'violet' }
-    ];
+    // Donut chart data (built from DASHBOARD_CONFIG)
+    const donutSources = DASHBOARD_CONFIG.sources.map(s => ({ label: s.name, value: s.value, colorKey: s.colorKey }));
     let donutAnimT = 0;
     let donutPrev = donutSources.map(s => s.value);
     let donutTargets = donutSources.map(s => s.value);
@@ -1405,9 +1440,9 @@
       lineData.prevVisitors = lineData.visitors.map((v, i) => lerp(lineData.prevVisitors[i], v, Math.min(lineData.animT, 1)));
       lineData.prevSessions = lineData.sessions.map((v, i) => lerp(lineData.prevSessions[i], v, Math.min(lineData.animT, 1)));
       lineData.visitors.shift();
-      lineData.visitors.push(rand(800, 3500));
+      lineData.visitors.push(rand(...DASHBOARD_CONFIG.lineVisitorsRange));
       lineData.sessions.shift();
-      lineData.sessions.push(rand(400, 2000));
+      lineData.sessions.push(rand(...DASHBOARD_CONFIG.lineSessionsRange));
       lineData.animT = 0;
       lineAnimStart = null;
       requestAnimationFrame(animateLine);
@@ -1515,7 +1550,7 @@
       requestAnimationFrame(animateDonut);
 
       // Auto-refresh
-      setInterval(refreshData, 3000);
+      setInterval(refreshData, DASHBOARD_CONFIG.refreshInterval);
     });
   </script>
 </body>
