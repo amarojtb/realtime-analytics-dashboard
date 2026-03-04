@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Analytics Dashboard | Amaro Barros</title>
+  <meta name="description" content="Real-time analytics dashboard demo built with vanilla HTML Canvas — no dependencies. A portfolio project by Amaro Barros.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════
+       CUSTOM PROPERTIES
+    ═══════════════════════════════════════════════ */
+    [data-theme="dark"] {
+      --bg-deep: #06080d;
+      --bg-panel: #0c1017;
+      --bg-card: #111720;
+      --bg-card-hover: #161e2a;
+      --border: #1a2233;
+      --border-glow: #1e3a5f;
+      --text-primary: #e8ecf4;
+      --text-secondary: #7a8ba8;
+      --text-muted: #4a5a74;
+      --accent-cyan: #22d3ee;
+      --accent-cyan-dim: rgba(34, 211, 238, 0.15);
+      --accent-emerald: #34d399;
+      --accent-emerald-dim: rgba(52, 211, 153, 0.12);
+      --accent-amber: #fbbf24;
+      --accent-amber-dim: rgba(251, 191, 36, 0.12);
+      --accent-violet: #a78bfa;
+      --accent-violet-dim: rgba(167, 139, 250, 0.12);
+      --accent-rose: #fb7185;
+      --accent-rose-dim: rgba(251, 113, 133, 0.12);
+      --grid-line: rgba(34, 211, 238, 0.03);
+      --grid-glow1: rgba(34, 211, 238, 0.06);
+      --grid-glow2: rgba(167, 139, 250, 0.04);
+      --shadow-card: rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-deep: #f4f6fa;
+      --bg-panel: #ffffff;
+      --bg-card: #f0f2f7;
+      --bg-card-hover: #e8ebf2;
+      --border: #d8dce6;
+      --border-glow: #b0bcd4;
+      --text-primary: #1a202c;
+      --text-secondary: #4a5568;
+      --text-muted: #8896ab;
+      --accent-cyan: #0891b2;
+      --accent-cyan-dim: rgba(8, 145, 178, 0.1);
+      --accent-emerald: #059669;
+      --accent-emerald-dim: rgba(5, 150, 105, 0.08);
+      --accent-amber: #d97706;
+      --accent-amber-dim: rgba(217, 119, 6, 0.08);
+      --accent-violet: #7c3aed;
+      --accent-violet-dim: rgba(124, 58, 237, 0.08);
+      --accent-rose: #e11d48;
+      --accent-rose-dim: rgba(225, 29, 72, 0.08);
+      --grid-line: rgba(8, 145, 178, 0.04);
+      --grid-glow1: rgba(8, 145, 178, 0.03);
+      --grid-glow2: rgba(124, 58, 237, 0.02);
+      --shadow-card: rgba(0, 0, 0, 0.06);
+    }
+
+    :root {
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-glow) var(--bg-deep);
+    }
+
+    body {
+      font-family: var(--font-display);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: var(--accent-cyan);
+      color: var(--bg-deep);
+    }
+
+    a { color: var(--accent-cyan); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #67e8f9; }
+
+    /* ═══════════════════════════════════════════════
+       GRID BACKGROUND
+    ═══════════════════════════════════════════════ */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    .grid-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, var(--grid-glow1), transparent 60%),
+                  radial-gradient(ellipse 60% 40% at 80% 100%, var(--grid-glow2), transparent 50%);
+    }
+
+    /* ═══════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════ */
+    .dashboard {
+      position: relative;
+      z-index: 1;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       TOP BAR
+    ═══════════════════════════════════════════════ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-link {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-link:hover { color: var(--accent-cyan); }
+    .back-link svg { width: 14px; height: 14px; }
+
+    .topbar-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent-emerald); }
+      50% { opacity: 0.6; box-shadow: 0 0 16px var(--accent-emerald); }
+    }
+
+    .topbar-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      background: var(--accent-cyan-dim);
+      color: var(--accent-cyan);
+      border-radius: 20px;
+      border: 1px solid rgba(34, 211, 238, 0.2);
+    }
+
+    .topbar-time {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ═══════════════════════════════════════════════
+       KPI CARDS
+    ═══════════════════════════════════════════════ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, transform 0.2s;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-2px);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .kpi-card[data-accent="cyan"]::before { background: linear-gradient(90deg, var(--accent-cyan), transparent); }
+    .kpi-card[data-accent="emerald"]::before { background: linear-gradient(90deg, var(--accent-emerald), transparent); }
+    .kpi-card[data-accent="amber"]::before { background: linear-gradient(90deg, var(--accent-amber), transparent); }
+    .kpi-card[data-accent="violet"]::before { background: linear-gradient(90deg, var(--accent-violet), transparent); }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      opacity: 0.06;
+    }
+
+    .kpi-card[data-accent="cyan"]::after { background: var(--accent-cyan); }
+    .kpi-card[data-accent="emerald"]::after { background: var(--accent-emerald); }
+    .kpi-card[data-accent="amber"]::after { background: var(--accent-amber); }
+    .kpi-card[data-accent="violet"]::after { background: var(--accent-violet); }
+
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .kpi-label {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .kpi-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kpi-icon svg { width: 16px; height: 16px; }
+
+    .kpi-card[data-accent="cyan"] .kpi-icon { background: var(--accent-cyan-dim); color: var(--accent-cyan); }
+    .kpi-card[data-accent="emerald"] .kpi-icon { background: var(--accent-emerald-dim); color: var(--accent-emerald); }
+    .kpi-card[data-accent="amber"] .kpi-icon { background: var(--accent-amber-dim); color: var(--accent-amber); }
+    .kpi-card[data-accent="violet"] .kpi-icon { background: var(--accent-violet-dim); color: var(--accent-violet); }
+
+    .kpi-value {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-card[data-accent="cyan"] .kpi-value { color: var(--accent-cyan); }
+    .kpi-card[data-accent="emerald"] .kpi-value { color: var(--accent-emerald); }
+    .kpi-card[data-accent="amber"] .kpi-value { color: var(--accent-amber); }
+    .kpi-card[data-accent="violet"] .kpi-value { color: var(--accent-violet); }
+
+    .kpi-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .kpi-change.up {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald);
+    }
+
+    .kpi-change.down {
+      background: var(--accent-rose-dim);
+      color: var(--accent-rose);
+    }
+
+    .kpi-change svg { width: 10px; height: 10px; }
+
+    .kpi-sparkline {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      opacity: 0.15;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CHART PANELS
+    ═══════════════════════════════════════════════ */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .charts-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .chart-panel:hover {
+      border-color: var(--border-glow);
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .chart-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .chart-subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .chart-canvas-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    .chart-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+    }
+
+    /* ═══════════════════════════════════════════════
+       BAR CHART (CSS-based)
+    ═══════════════════════════════════════════════ */
+    .bar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .bar-item {
+      display: grid;
+      grid-template-columns: 120px 1fr 60px;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .bar-label {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      height: 26px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 30px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12));
+      border-radius: 0 6px 6px 0;
+    }
+
+    .bar-fill.cyan { background: linear-gradient(90deg, rgba(34,211,238,0.3), var(--accent-cyan)); }
+    .bar-fill.emerald { background: linear-gradient(90deg, rgba(52,211,153,0.3), var(--accent-emerald)); }
+    .bar-fill.amber { background: linear-gradient(90deg, rgba(251,191,36,0.3), var(--accent-amber)); }
+    .bar-fill.violet { background: linear-gradient(90deg, rgba(167,139,250,0.3), var(--accent-violet)); }
+    .bar-fill.rose { background: linear-gradient(90deg, rgba(251,113,133,0.3), var(--accent-rose)); }
+
+    .bar-value {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      text-align: right;
+    }
+
+    /* ═══════════════════════════════════════════════
+       DONUT LEGEND
+    ═══════════════════════════════════════════════ */
+    .donut-wrap {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .donut-canvas-wrap {
+      flex-shrink: 0;
+    }
+
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .donut-legend-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .donut-legend-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .donut-legend-value {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .donut-legend-pct {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      width: 40px;
+      text-align: right;
+    }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════ */
+    .dash-footer {
+      text-align: center;
+      padding: 24px 0 16px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .dash-footer span {
+      color: var(--text-secondary);
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard { padding: 12px; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; gap: 10px; align-items: flex-start; }
+      .topbar-right { align-self: flex-end; }
+      .bar-item { grid-template-columns: 90px 1fr 50px; }
+      .donut-wrap { flex-direction: column; }
+      .kpi-value { font-size: 1.5rem; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       THEME TOGGLE
+    ═══════════════════════════════════════════════ */
+    .theme-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, background 0.3s;
+      color: var(--text-muted);
+    }
+    .theme-toggle:hover {
+      border-color: var(--border-glow);
+      color: var(--accent-cyan);
+    }
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .theme-toggle .icon-sun { display: none; }
+    .theme-toggle .icon-moon { display: block; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+    /* ═══════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════ */
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+      animation: fade-in-up 0.5s ease-out forwards;
+      opacity: 0;
+    }
+
+    .animate-in:nth-child(1) { animation-delay: 0.05s; }
+    .animate-in:nth-child(2) { animation-delay: 0.1s; }
+    .animate-in:nth-child(3) { animation-delay: 0.15s; }
+    .animate-in:nth-child(4) { animation-delay: 0.2s; }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: prefers-reduced-motion
+    ═══════════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Focus styles
+    ═══════════════════════════════════════════════ */
+    :focus-visible {
+      outline: 2px solid var(--accent-cyan);
+      outline-offset: 3px;
+    }
+
+    :focus:not(:focus-visible) {
+      outline: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Screen-reader only utility
+    ═══════════════════════════════════════════════ */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ACCESSIBILITY: Skip-to-content link
+    ═══════════════════════════════════════════════ */
+    .skip-to-content {
+      position: absolute;
+      top: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 8px 16px;
+      background: var(--accent-cyan);
+      color: var(--bg-deep);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+    }
+
+    .skip-to-content:focus {
+      top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <div class="dashboard">
+    <!-- TOP BAR -->
+    <nav class="topbar animate-in" style="animation-delay: 0s;" aria-label="Dashboard navigation">
+      <div class="topbar-left">
+        <a href="../" class="back-link">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Portfolio
+        </a>
+        <div class="topbar-divider" aria-hidden="true"></div>
+        <div class="status-dot" aria-hidden="true"></div>
+        <span class="topbar-title">Analytics Dashboard</span>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-badge">LIVE DEMO</span>
+        <span class="topbar-time" id="clock"></span>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Switch theme">
+          <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <main id="main-content">
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card animate-in" data-accent="cyan" id="kpi-users">
+        <div class="kpi-header">
+          <span class="kpi-label">Active Users</span>
+          <div class="kpi-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="val-users">0</div>
+        <span class="kpi-change up" id="chg-users">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+          +12.5%
+        </span>
+        <canvas class="kpi-sparkline" id="spark-users" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="kpi-card animate-in" data-accent="emerald" id="kpi-views">
+        <div class="kpi-header">
+          <span class="kpi-label">Page Views</span>
+          <div class="kpi-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="val-views">0</div>
+        <span class="kpi-change up" id="chg-views">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+          +8.3%
+        </span>
+        <canvas class="kpi-sparkline" id="spark-views" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="kpi-card animate-in" data-accent="amber" id="kpi-conversion">
+        <div class="kpi-header">
+          <span class="kpi-label">Conversion Rate</span>
+          <div class="kpi-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="val-conversion">0%</div>
+        <span class="kpi-change up" id="chg-conversion">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+          +2.1%
+        </span>
+        <canvas class="kpi-sparkline" id="spark-conversion" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="kpi-card animate-in" data-accent="violet" id="kpi-revenue">
+        <div class="kpi-header">
+          <span class="kpi-label">Revenue</span>
+          <div class="kpi-icon">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
+        <div class="kpi-value" id="val-revenue">$0</div>
+        <span class="kpi-change up" id="chg-revenue">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+          +18.7%
+        </span>
+        <canvas class="kpi-sparkline" id="spark-revenue" aria-hidden="true"></canvas>
+      </div>
+    </div>
+
+    <!-- LINE CHART -->
+    <div class="charts-row full">
+      <div class="chart-panel animate-in" style="animation-delay: 0.25s;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Traffic Over Time</div>
+            <div class="chart-subtitle">Last 24 data points &middot; updates every 3s</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-cyan);"></div>Visitors</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-violet);"></div>Sessions</div>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="line-chart" height="260" role="img" aria-label="Line chart showing visitor and session trends over the last 24 data points"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- BAR + DONUT -->
+    <div class="charts-row">
+      <div class="chart-panel animate-in" style="animation-delay: 0.3s;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Top Pages</div>
+            <div class="chart-subtitle">By unique views this session</div>
+          </div>
+        </div>
+        <div class="bar-list" id="bar-list"></div>
+      </div>
+
+      <div class="chart-panel animate-in" style="animation-delay: 0.35s;">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Traffic Sources</div>
+            <div class="chart-subtitle">Distribution by channel</div>
+          </div>
+        </div>
+        <div class="donut-wrap">
+          <div class="donut-canvas-wrap">
+            <canvas id="donut-chart" width="180" height="180" role="img" aria-label="Donut chart showing traffic sources breakdown by channel"></canvas>
+          </div>
+          <div class="donut-legend" id="donut-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="dash-footer">
+      Built with <span>vanilla HTML Canvas</span> &middot; no external libraries &middot; <a href="../">amarobarros.dev</a>
+    </footer>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════
+       THEME INIT (runs immediately to prevent flash)
+    ═══════════════════════════════════════════════ */
+    (function() {
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    /* ═══════════════════════════════════════════════
+       THEME COLOR HELPERS
+    ═══════════════════════════════════════════════ */
+    function getThemeColors() {
+      const s = getComputedStyle(document.documentElement);
+      return {
+        textPrimary: s.getPropertyValue('--text-primary').trim(),
+        textSecondary: s.getPropertyValue('--text-secondary').trim(),
+        textMuted: s.getPropertyValue('--text-muted').trim(),
+        bgCard: s.getPropertyValue('--bg-card').trim(),
+        bgPanel: s.getPropertyValue('--bg-panel').trim(),
+        border: s.getPropertyValue('--border').trim(),
+        cyan: s.getPropertyValue('--accent-cyan').trim(),
+        emerald: s.getPropertyValue('--accent-emerald').trim(),
+        amber: s.getPropertyValue('--accent-amber').trim(),
+        violet: s.getPropertyValue('--accent-violet').trim(),
+        rose: s.getPropertyValue('--accent-rose').trim()
+      };
+    }
+
+    function getChartColors() {
+      const tc = getThemeColors();
+      return {
+        cyan: tc.cyan,
+        emerald: tc.emerald,
+        amber: tc.amber,
+        violet: tc.violet,
+        rose: tc.rose
+      };
+    }
+
+    /* ═══════════════════════════════════════════════
+       UTILITY HELPERS
+    ═══════════════════════════════════════════════ */
+    function hexToRgba(hex, alpha) {
+      hex = hex.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+    }
+
+    const DPR = window.devicePixelRatio || 1;
+
+    function setupCanvas(canvas, w, h) {
+      canvas.width = w * DPR;
+      canvas.height = h * DPR;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(DPR, DPR);
+      return ctx;
+    }
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function formatNum(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toLocaleString();
+    }
+
+    /* ═══════════════════════════════════════════════
+       CLOCK
+    ═══════════════════════════════════════════════ */
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' UTC';
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ═══════════════════════════════════════════════
+       DATA STATE
+    ═══════════════════════════════════════════════ */
+    function COLORS_FN() {
+      return getChartColors();
+    }
+    // Keep a mutable reference that we refresh on theme change
+    let COLORS = COLORS_FN();
+
+    // KPI state
+    const kpiState = {
+      users: { value: 2847, target: 2847, display: 0 },
+      views: { value: 48293, target: 48293, display: 0 },
+      conversion: { value: 3.74, target: 3.74, display: 0 },
+      revenue: { value: 12847, target: 12847, display: 0 }
+    };
+
+    // Sparkline data
+    const sparkData = {
+      users: Array.from({length: 20}, () => rand(2200, 3200)),
+      views: Array.from({length: 20}, () => rand(38000, 55000)),
+      conversion: Array.from({length: 20}, () => rand(280, 420) / 100),
+      revenue: Array.from({length: 20}, () => rand(9000, 16000))
+    };
+
+    // Line chart data
+    const LINE_POINTS = 24;
+    const lineData = {
+      visitors: Array.from({length: LINE_POINTS}, () => rand(800, 3500)),
+      sessions: Array.from({length: LINE_POINTS}, () => rand(400, 2000)),
+      prevVisitors: [],
+      prevSessions: [],
+      animT: 1
+    };
+    lineData.prevVisitors = [...lineData.visitors];
+    lineData.prevSessions = [...lineData.sessions];
+
+    // Bar chart data
+    const barPages = [
+      { label: '/home', value: 4820, color: 'cyan' },
+      { label: '/products', value: 3294, color: 'emerald' },
+      { label: '/pricing', value: 2180, color: 'amber' },
+      { label: '/blog', value: 1756, color: 'violet' },
+      { label: '/contact', value: 987, color: 'rose' },
+      { label: '/about', value: 743, color: 'cyan' }
+    ];
+    const barTargets = barPages.map(p => p.value);
+    const barDisplayed = barPages.map(() => 0);
+
+    // Donut chart data
+    const donutSources = [
+      { label: 'Direct', value: 4250, colorKey: 'cyan' },
+      { label: 'Organic', value: 3180, colorKey: 'emerald' },
+      { label: 'Social', value: 2140, colorKey: 'amber' },
+      { label: 'Referral', value: 1430, colorKey: 'violet' }
+    ];
+    let donutAnimT = 0;
+    let donutPrev = donutSources.map(s => s.value);
+    let donutTargets = donutSources.map(s => s.value);
+
+    /* ═══════════════════════════════════════════════
+       SPARKLINE RENDERER
+    ═══════════════════════════════════════════════ */
+    function drawSparkline(canvasId, data, color) {
+      const canvas = document.getElementById(canvasId);
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = 40;
+      const ctx = setupCanvas(canvas, w, h);
+
+      const min = Math.min(...data) * 0.9;
+      const max = Math.max(...data) * 1.1;
+      const range = max - min || 1;
+      const step = w / (data.length - 1);
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Fill gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, 'transparent');
+
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let i = 0; i < data.length; i++) {
+        const x = i * step;
+        const y = h - ((data[i] - min) / range) * h * 0.85;
+        if (i === 0) ctx.lineTo(x, y);
+        else {
+          const px = (i - 1) * step;
+          const py = h - ((data[i - 1] - min) / range) * h * 0.85;
+          const cpx = (px + x) / 2;
+          ctx.bezierCurveTo(cpx, py, cpx, y, x, y);
+        }
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    /* ═══════════════════════════════════════════════
+       LINE CHART RENDERER
+    ═══════════════════════════════════════════════ */
+    function drawLineChart() {
+      const canvas = document.getElementById('line-chart');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = 260;
+      const ctx = setupCanvas(canvas, w, h);
+
+      const padL = 50, padR = 20, padT = 16, padB = 30;
+      const chartW = w - padL - padR;
+      const chartH = h - padT - padB;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Interpolate data
+      const t = Math.min(lineData.animT, 1);
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const vis = lineData.visitors.map((v, i) => lerp(lineData.prevVisitors[i], v, eased));
+      const ses = lineData.sessions.map((v, i) => lerp(lineData.prevSessions[i], v, eased));
+
+      const allVals = [...vis, ...ses];
+      const maxVal = Math.max(...allVals) * 1.15;
+      const minVal = Math.min(...allVals) * 0.85;
+      const range = maxVal - minVal || 1;
+
+      // Grid lines
+      const tc = getThemeColors();
+      const gridLines = 5;
+      ctx.strokeStyle = tc.border;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.font = '11px "DM Mono", monospace';
+      ctx.fillStyle = tc.textMuted;
+      ctx.textAlign = 'right';
+
+      for (let i = 0; i <= gridLines; i++) {
+        const y = padT + (i / gridLines) * chartH;
+        const val = maxVal - (i / gridLines) * range;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+        ctx.fillText(formatNum(Math.round(val)), padL - 8, y + 4);
+      }
+      ctx.setLineDash([]);
+
+      // X-axis labels
+      ctx.textAlign = 'center';
+      const step = chartW / (LINE_POINTS - 1);
+      for (let i = 0; i < LINE_POINTS; i += 4) {
+        const x = padL + i * step;
+        ctx.fillText((LINE_POINTS - i) + 'h', x, h - 6);
+      }
+
+      // Draw helper
+      function drawSeries(data, color, glowColor) {
+        const points = data.map((v, i) => ({
+          x: padL + i * step,
+          y: padT + chartH - ((v - minVal) / range) * chartH
+        }));
+
+        // Area fill
+        const areaGrad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
+        areaGrad.addColorStop(0, hexToRgba(glowColor, 0.15));
+        areaGrad.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, padT + chartH);
+        ctx.lineTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          const cp = (points[i - 1].x + points[i].x) / 2;
+          ctx.bezierCurveTo(cp, points[i - 1].y, cp, points[i].y, points[i].x, points[i].y);
+        }
+        ctx.lineTo(points[points.length - 1].x, padT + chartH);
+        ctx.closePath();
+        ctx.fillStyle = areaGrad;
+        ctx.fill();
+
+        // Glow
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          const cp = (points[i - 1].x + points[i].x) / 2;
+          ctx.bezierCurveTo(cp, points[i - 1].y, cp, points[i].y, points[i].x, points[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Line
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          const cp = (points[i - 1].x + points[i].x) / 2;
+          ctx.bezierCurveTo(cp, points[i - 1].y, cp, points[i].y, points[i].x, points[i].y);
+        }
+        ctx.stroke();
+
+        // Last point dot
+        const last = points[points.length - 1];
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, 7, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.3;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      drawSeries(ses, COLORS.violet, COLORS.violet);
+      drawSeries(vis, COLORS.cyan, COLORS.cyan);
+    }
+
+    /* ═══════════════════════════════════════════════
+       BAR CHART RENDERER
+    ═══════════════════════════════════════════════ */
+    function renderBars() {
+      const container = document.getElementById('bar-list');
+      const maxVal = Math.max(...barPages.map(p => p.value));
+      container.innerHTML = '';
+
+      barPages.forEach((page, i) => {
+        const pct = (page.value / maxVal) * 100;
+        const el = document.createElement('div');
+        el.className = 'bar-item';
+        el.innerHTML = `
+          <span class="bar-label">${page.label}</span>
+          <div class="bar-track">
+            <div class="bar-fill ${page.color}" style="width: 0%;" id="bar-${i}"></div>
+          </div>
+          <span class="bar-value">${formatNum(page.value)}</span>
+        `;
+        container.appendChild(el);
+
+        // Animate in
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.getElementById('bar-' + i).style.width = pct + '%';
+          });
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       DONUT CHART RENDERER
+    ═══════════════════════════════════════════════ */
+    function drawDonut() {
+      const canvas = document.getElementById('donut-chart');
+      const size = 180;
+      const ctx = setupCanvas(canvas, size, size);
+
+      const cx = size / 2;
+      const cy = size / 2;
+      const outerR = 78;
+      const innerR = 52;
+
+      const t = Math.min(donutAnimT, 1);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      // Interpolate values
+      const vals = donutSources.map((s, i) => lerp(donutPrev[i], donutTargets[i], eased));
+      const total = vals.reduce((a, b) => a + b, 0);
+
+      ctx.clearRect(0, 0, size, size);
+
+      // Background ring
+      const tc = getThemeColors();
+      ctx.beginPath();
+      ctx.arc(cx, cy, (outerR + innerR) / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = tc.border;
+      ctx.lineWidth = outerR - innerR;
+      ctx.stroke();
+
+      // Segments
+      let startAngle = -Math.PI / 2;
+      const gap = 0.03;
+
+      vals.forEach((val, i) => {
+        const sliceAngle = (val / total) * Math.PI * 2 - gap;
+        if (sliceAngle <= 0) return;
+
+        // Glow
+        const sliceColor = COLORS[donutSources[i].colorKey];
+        ctx.save();
+        ctx.shadowColor = sliceColor;
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, (outerR + innerR) / 2, startAngle + gap / 2, startAngle + sliceAngle + gap / 2);
+        ctx.strokeStyle = sliceColor;
+        ctx.lineWidth = outerR - innerR;
+        ctx.lineCap = 'butt';
+        ctx.stroke();
+        ctx.restore();
+
+        startAngle += sliceAngle + gap;
+      });
+
+      // Center text
+      ctx.fillStyle = tc.textPrimary;
+      ctx.font = '600 22px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatNum(Math.round(total)), cx, cy - 6);
+
+      ctx.fillStyle = tc.textMuted;
+      ctx.font = '11px "DM Mono", monospace';
+      ctx.fillText('total', cx, cy + 14);
+
+      // Legend
+      renderDonutLegend(vals, total);
+    }
+
+    function renderDonutLegend(vals, total) {
+      const container = document.getElementById('donut-legend');
+      container.innerHTML = '';
+      donutSources.forEach((source, i) => {
+        const pct = ((vals[i] / total) * 100).toFixed(1);
+        const el = document.createElement('div');
+        el.className = 'donut-legend-item';
+        el.innerHTML = `
+          <div class="donut-legend-color" style="background:${COLORS[source.colorKey]};"></div>
+          <span class="donut-legend-label">${source.label}</span>
+          <span class="donut-legend-value">${formatNum(Math.round(vals[i]))}</span>
+          <span class="donut-legend-pct">${pct}%</span>
+        `;
+        container.appendChild(el);
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       KPI ANIMATED COUNTER
+    ═══════════════════════════════════════════════ */
+    let kpiAnimStart = null;
+    const KPI_ANIM_DURATION = 800;
+
+    function animateKPIs(timestamp) {
+      if (!kpiAnimStart) kpiAnimStart = timestamp;
+      const elapsed = timestamp - kpiAnimStart;
+      const t = Math.min(elapsed / KPI_ANIM_DURATION, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      // Users
+      const uVal = Math.round(lerp(kpiState.users.display, kpiState.users.target, eased));
+      document.getElementById('val-users').textContent = formatNum(uVal);
+
+      // Views
+      const vVal = Math.round(lerp(kpiState.views.display, kpiState.views.target, eased));
+      document.getElementById('val-views').textContent = formatNum(vVal);
+
+      // Conversion
+      const cVal = lerp(kpiState.conversion.display, kpiState.conversion.target, eased);
+      document.getElementById('val-conversion').textContent = cVal.toFixed(2) + '%';
+
+      // Revenue
+      const rVal = Math.round(lerp(kpiState.revenue.display, kpiState.revenue.target, eased));
+      document.getElementById('val-revenue').textContent = '$' + formatNum(rVal);
+
+      if (t < 1) {
+        requestAnimationFrame(animateKPIs);
+      } else {
+        kpiState.users.display = kpiState.users.target;
+        kpiState.views.display = kpiState.views.target;
+        kpiState.conversion.display = kpiState.conversion.target;
+        kpiState.revenue.display = kpiState.revenue.target;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       LINE CHART ANIMATION LOOP
+    ═══════════════════════════════════════════════ */
+    let lineAnimStart = null;
+    const LINE_ANIM_DURATION = 1200;
+
+    function animateLine(timestamp) {
+      if (!lineAnimStart) lineAnimStart = timestamp;
+      const elapsed = timestamp - lineAnimStart;
+      lineData.animT = Math.min(elapsed / LINE_ANIM_DURATION, 1);
+
+      drawLineChart();
+
+      if (lineData.animT < 1) {
+        requestAnimationFrame(animateLine);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       DONUT ANIMATION LOOP
+    ═══════════════════════════════════════════════ */
+    let donutAnimStart = null;
+    const DONUT_ANIM_DURATION = 1000;
+
+    function animateDonut(timestamp) {
+      if (!donutAnimStart) donutAnimStart = timestamp;
+      const elapsed = timestamp - donutAnimStart;
+      donutAnimT = Math.min(elapsed / DONUT_ANIM_DURATION, 1);
+
+      drawDonut();
+
+      if (donutAnimT < 1) {
+        requestAnimationFrame(animateDonut);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       KPI CHANGE BADGE UPDATE
+    ═══════════════════════════════════════════════ */
+    function updateChangeBadge(id, value) {
+      const el = document.getElementById(id);
+      const isUp = value >= 0;
+      const sign = isUp ? '+' : '';
+      el.className = 'kpi-change ' + (isUp ? 'up' : 'down');
+      el.innerHTML = `
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="${isUp ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'}"/>
+        </svg>
+        ${sign}${value.toFixed(1)}%
+      `;
+    }
+
+    /* ═══════════════════════════════════════════════
+       DATA REFRESH (every 3s)
+    ═══════════════════════════════════════════════ */
+    function refreshData() {
+      // KPIs
+      kpiState.users.display = kpiState.users.target;
+      kpiState.users.target = Math.max(500, kpiState.users.target + rand(-200, 250));
+      sparkData.users.push(kpiState.users.target);
+      sparkData.users.shift();
+
+      kpiState.views.display = kpiState.views.target;
+      kpiState.views.target = Math.max(10000, kpiState.views.target + rand(-2000, 3000));
+      sparkData.views.push(kpiState.views.target);
+      sparkData.views.shift();
+
+      kpiState.conversion.display = kpiState.conversion.target;
+      kpiState.conversion.target = Math.max(0.5, Math.min(8, kpiState.conversion.target + (Math.random() - 0.45) * 0.4));
+      sparkData.conversion.push(kpiState.conversion.target);
+      sparkData.conversion.shift();
+
+      kpiState.revenue.display = kpiState.revenue.target;
+      kpiState.revenue.target = Math.max(3000, kpiState.revenue.target + rand(-800, 1200));
+      sparkData.revenue.push(kpiState.revenue.target);
+      sparkData.revenue.shift();
+
+      // KPI change percentages
+      updateChangeBadge('chg-users', (Math.random() - 0.3) * 25);
+      updateChangeBadge('chg-views', (Math.random() - 0.3) * 18);
+      updateChangeBadge('chg-conversion', (Math.random() - 0.4) * 6);
+      updateChangeBadge('chg-revenue', (Math.random() - 0.25) * 30);
+
+      kpiAnimStart = null;
+      requestAnimationFrame(animateKPIs);
+
+      // Sparklines
+      drawSparkline('spark-users', sparkData.users, COLORS.cyan);
+      drawSparkline('spark-views', sparkData.views, COLORS.emerald);
+      drawSparkline('spark-conversion', sparkData.conversion, COLORS.amber);
+      drawSparkline('spark-revenue', sparkData.revenue, COLORS.violet);
+
+      // Line chart
+      lineData.prevVisitors = lineData.visitors.map((v, i) => lerp(lineData.prevVisitors[i], v, Math.min(lineData.animT, 1)));
+      lineData.prevSessions = lineData.sessions.map((v, i) => lerp(lineData.prevSessions[i], v, Math.min(lineData.animT, 1)));
+      lineData.visitors.shift();
+      lineData.visitors.push(rand(800, 3500));
+      lineData.sessions.shift();
+      lineData.sessions.push(rand(400, 2000));
+      lineData.animT = 0;
+      lineAnimStart = null;
+      requestAnimationFrame(animateLine);
+
+      // Bar chart
+      barPages.forEach((page, i) => {
+        page.value = Math.max(200, page.value + rand(-300, 400));
+      });
+      // Re-sort descending
+      barPages.sort((a, b) => b.value - a.value);
+      renderBars();
+
+      // Donut
+      donutPrev = donutTargets.map((v, i) => lerp(donutPrev[i], v, Math.min(donutAnimT, 1)));
+      donutTargets = donutSources.map(s => {
+        s.value = Math.max(300, s.value + rand(-300, 400));
+        return s.value;
+      });
+      donutAnimT = 0;
+      donutAnimStart = null;
+      requestAnimationFrame(animateDonut);
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESIZE HANDLER
+    ═══════════════════════════════════════════════ */
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        drawLineChart();
+        drawSparkline('spark-users', sparkData.users, COLORS.cyan);
+        drawSparkline('spark-views', sparkData.views, COLORS.emerald);
+        drawSparkline('spark-conversion', sparkData.conversion, COLORS.amber);
+        drawSparkline('spark-revenue', sparkData.revenue, COLORS.violet);
+      }, 150);
+    });
+
+    /* ═══════════════════════════════════════════════
+       INITIAL RENDER
+    ═══════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════
+       THEME CHANGE HANDLER
+    ═══════════════════════════════════════════════ */
+    function onThemeChange(theme) {
+      // Refresh the COLORS object from CSS variables
+      COLORS = COLORS_FN();
+      // Re-render all canvas-based charts
+      drawLineChart();
+      drawSparkline('spark-users', sparkData.users, COLORS.cyan);
+      drawSparkline('spark-views', sparkData.views, COLORS.emerald);
+      drawSparkline('spark-conversion', sparkData.conversion, COLORS.amber);
+      drawSparkline('spark-revenue', sparkData.revenue, COLORS.violet);
+      drawDonut();
+    }
+
+    /* ═══════════════════════════════════════════════
+       THEME TOGGLE
+    ═══════════════════════════════════════════════ */
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      onThemeChange(next);
+    });
+
+    /* ═══════════════════════════════════════════════
+       INITIAL RENDER
+    ═══════════════════════════════════════════════ */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Refresh COLORS from computed styles
+      COLORS = COLORS_FN();
+
+      // Initial KPI animation from 0
+      kpiState.users.display = 0;
+      kpiState.views.display = 0;
+      kpiState.conversion.display = 0;
+      kpiState.revenue.display = 0;
+      requestAnimationFrame(animateKPIs);
+
+      // Initial sparklines
+      drawSparkline('spark-users', sparkData.users, COLORS.cyan);
+      drawSparkline('spark-views', sparkData.views, COLORS.emerald);
+      drawSparkline('spark-conversion', sparkData.conversion, COLORS.amber);
+      drawSparkline('spark-revenue', sparkData.revenue, COLORS.violet);
+
+      // Initial change badges
+      updateChangeBadge('chg-users', 12.5);
+      updateChangeBadge('chg-views', 8.3);
+      updateChangeBadge('chg-conversion', 2.1);
+      updateChangeBadge('chg-revenue', 18.7);
+
+      // Line chart
+      lineData.animT = 0;
+      requestAnimationFrame(animateLine);
+
+      // Bar chart
+      renderBars();
+
+      // Donut chart
+      donutPrev = donutSources.map(() => 0);
+      donutTargets = donutSources.map(s => s.value);
+      requestAnimationFrame(animateDonut);
+
+      // Auto-refresh
+      setInterval(refreshData, 3000);
+    });
+  </script>
+</body>
+</html>
